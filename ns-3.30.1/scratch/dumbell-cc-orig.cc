@@ -195,54 +195,27 @@ IncRate (Ptr<MyApp> app, DataRate rate)
     return;
 }
 
-static void
-RxDrop (Ptr<const Packet> p)
-{
-  NS_LOG_UNCOND ("RxDrop at " << Simulator::Now ().GetSeconds ());
-}
-
 
 int main (int argc, char *argv[])
 {
-  std::string inet_bw = "100Mbps";
-  std::string inet_delay = "5ms";
-  std::string dc_bw = "100Mbps";
-  std::string dc_delay = "1ms";
-  std::string bnck_bw = "10Mbps";
-  std::string bnck_delay = "1ms";
-  //std::string lat = "2ms";
-  //std::string rate = "500kb/s"; // P2P link
+  std::string lat = "2ms";
+  std::string rate = "500kb/s"; // P2P link
   bool enableFlowMonitor = false;
-  //bool tracing = true;
+  bool tracing = true;
   float simDuration = 5.0;
-
-  uint32_t nb_servers = 4;
-  uint32_t nb_clients = 4;
-  uint32_t flowPacketSize = 1440;
 
 
   CommandLine cmd;
-  cmd.AddValue ("latency", "bottleneck link Latency in miliseconds", bnck_delay);
-  cmd.AddValue ("rate", "bottleneck link data rate in Mbps", bnck_bw);
+  cmd.AddValue ("latency", "P2P link Latency in miliseconds", lat);
+  cmd.AddValue ("rate", "P2P data rate in bps", rate);
   cmd.AddValue ("EnableMonitor", "Enable Flow Monitor", enableFlowMonitor);
-  cmd.AddValue ("nb_clients", "Number of clients sending requests", nb_clients);
-  cmd.AddValue ("nc", "Number of clients sending requests", nb_clients);
 
   cmd.Parse (argc, argv);
 
 //
-// Create the nodes required by the topology (shown above).
+// Explicitly create the nodes required by the topology (shown above).
 //
-
-  NodeContainer routers;
-    routers.Create(2);
-  NodeContainer leftleaves;
-    leftleaves.Create(2 * nb_clients + 1);
-  NodeContainer rightleaves;
-    rightleaves.Create(2 * nb_servers + 1);
-
-
-  /*NS_LOG_INFO ("Create nodes.");
+  NS_LOG_INFO ("Create nodes.");
   NodeContainer c; // ALL Nodes
   c.Create(6);
 
@@ -285,25 +258,7 @@ int main (int argc, char *argv[])
   Ipv4InterfaceContainer i2i5 = ipv4.Assign (d2d5);
 
   ipv4.SetBase ("10.1.5.0", "255.255.255.0");
-  Ipv4InterfaceContainer i3i5 = ipv4.Assign (d3d5);*/
-
-    // Create and configure access link and bottleneck link
-    PointToPointHelper inetLink;
-      inetLink.SetDeviceAttribute ("DataRate", StringValue (inet_bw));
-      inetLink.SetChannelAttribute ("Delay", StringValue (inet_delay));
-
-    PointToPointHelper dcLink;
-      dcLink.SetDeviceAttribute ("DataRate", StringValue (dc_bw));
-      dcLink.SetChannelAttribute ("Delay", StringValue (dc_delay));
-
-    PointToPointHelper bnckLink;
-      bnckLink.SetDeviceAttribute ("DataRate", StringValue (bnck_bw));
-      bnckLink.SetChannelAttribute ("Delay", StringValue (bnck_delay));
-
-    InternetStackHelper stack;
-      stack.Install(routers);
-      stack.Install(leftleaves);
-      stack.Install(rightleaves);
+  Ipv4InterfaceContainer i3i5 = ipv4.Assign (d3d5);
 
   NS_LOG_INFO ("Enable static global routing.");
   //
@@ -311,125 +266,9 @@ int main (int argc, char *argv[])
   //
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
 
-  //========================== Internet Links ==========================
-
-  Config::SetDefault ("ns3::QueueBase::MaxSize", StringValue ("1000p"));
-
-    NetDeviceContainer leftrouterdevices;
-    NetDeviceContainer leftleafdevices;
-    NetDeviceContainer rightrouterdevices;
-    NetDeviceContainer rightleafdevices;
-
-    // add the left side links
-    for (uint32_t i = 0; i<(2 * nb_clients + 1); ++i) {
-        NetDeviceContainer cleft = inetLink.Install(routers.Get(0), leftleaves.Get(i));
-          leftrouterdevices.Add(cleft.Get(0));
-          leftleafdevices.Add(cleft.Get(1));
-    }
-
-  //========================== Datacenter Links ==========================
-
-    // add the right side links
-    for (uint32_t i = 0; i<(nb_servers + 1); ++i) {
-        NetDeviceContainer cright = dcLink.Install(routers.Get(2), rightleaves.Get(i));
-          rightrouterdevices.Add(cright.Get(0));
-          rightleafdevices.Add(cright.Get(1));
-    }
-
-  //========================== Bottleneck Link =============================
-
-  //Config::SetDefault ("ns3::QueueBase::MaxSize", StringValue (std::to_string (netdevicesQueueSize) + "p"));
-  //Defining two containers of bottlneck devices
-  NetDeviceContainer devicesInetLink = inetLink.Install (routers.Get(0), routers.Get(1));
-  //tchPfifoFastAccess.Install(devicesInetLink);
-  NetDeviceContainer devicesBnckLink = bnckLink.Install (routers.Get(1), routers.Get(2));
-
-  // The devices connected to both bottlenecks
-  Ptr<NetDevice> right_router = devicesBnckLink.Get(1);
-  Ptr<NetDevice> midright_router = devicesBnckLink.Get(0);
-  Ptr<NetDevice> midleft_router = devicesInetLink.Get(1);
-  Ptr<NetDevice> left_router = devicesInetLink.Get(0);
-
-  /*Ptr<Queue<Packet> > queueHelp_right = StaticCast<PointToPointNetDevice> (right_router)->GetQueue ();
-  queueHelp_right->TraceConnectWithoutContext ("PacketsInQueue", MakeCallback (&DevicePacketsInQueueTrace));
-  Ptr<Queue<Packet> > queueHelp_midright = StaticCast<PointToPointNetDevice> (midright_router)->GetQueue ();
-  queueHelp_midright->TraceConnectWithoutContext ("PacketsInQueue", MakeCallback (&DevicePacketsInQueueTrace));*/
-
-  devicesBnckLink.Get (0) ->TraceConnectWithoutContext ("PhyRxDrop", MakeCallback (&RxDrop));
-  devicesBnckLink.Get (1) ->TraceConnectWithoutContext ("PhyRxDrop", MakeCallback (&RxDrop));
 
   NS_LOG_INFO ("Create Applications.");
 
-  AsciiTraceHelper ascii;
-  /*qdiscs.Get(0)->TraceConnectWithoutContext ("PacketsInQueue", MakeCallback (&PacketsInQueueTrace));
-  qdiscs.Get(1)->TraceConnectWithoutContext ("PacketsInQueue", MakeCallback (&PacketsInQueueTrace));
-  Ptr<OutputStreamWrapper> streamBytesInQdisc1 = ascii.CreateFileStream (outdir + queueDiscType + "-bytesInQdisc1.txt");
-  qdiscs.Get(0)->TraceConnectWithoutContext ("BytesInQueue", MakeBoundCallback (&BytesInQueueTraceFile, streamBytesInQdisc1));
-  Ptr<OutputStreamWrapper> streamBytesInQdisc2 = ascii.CreateFileStream (outdir + queueDiscType + "-bytesInQdisc2.txt");
-  qdiscs.Get(1)->TraceConnectWithoutContext ("BytesInQueue", MakeBoundCallback (&BytesInQueueTraceFile, streamBytesInQdisc2));*/
-
-  // assign ipv4 addresses
-  Ipv4AddressHelper routerips = Ipv4AddressHelper("10.3.0.0", "255.255.255.0");
-  Ipv4AddressHelper leftips = Ipv4AddressHelper("10.1.0.0", "255.255.255.0");
-  Ipv4AddressHelper rightips = Ipv4AddressHelper("10.2.0.0", "255.255.255.0");
-
-
-  Ipv4InterfaceContainer routerifs_right;
-  Ipv4InterfaceContainer routerifs_left;
-  Ipv4InterfaceContainer leftleafifs;
-  Ipv4InterfaceContainer leftrouterifs;
-  Ipv4InterfaceContainer rightleafifs;
-  Ipv4InterfaceContainer rightrouterifs;
-
-  // assign addresses to connection connecting routers
-  routerifs_right = routerips.Assign(devicesBnckLink);
-  routerifs_left = routerips.Assign(devicesInetLink);
-
-  // assign addresses to connection between routers and leaves
-  for (uint32_t i = 0; i<(2 * nb_clients + 1); ++i)
-  {
-      // Assign to left side
-      NetDeviceContainer ndcleft;
-        ndcleft.Add(leftleafdevices.Get(i));
-        ndcleft.Add(leftrouterdevices.Get(i));
-      Ipv4InterfaceContainer ifcleft = leftips.Assign(ndcleft);
-        leftleafifs.Add(ifcleft.Get(0));
-        leftrouterifs.Add(ifcleft.Get(1));
-      leftips.NewNetwork();
-   }
-  for (uint32_t i = 0; i<(nb_servers + 1); ++i)
-  {
-      // Assign to right side
-      NetDeviceContainer ndcright;
-        ndcright.Add(rightleafdevices.Get(i));
-        ndcright.Add(rightrouterdevices.Get(i));
-      Ipv4InterfaceContainer ifcright = rightips.Assign(ndcright);
-        rightleafifs.Add(ifcright.Get(0));
-        rightrouterifs.Add(ifcright.Get(1));
-      rightips.NewNetwork();
-  }
-
-  Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
-
-  Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpNcf"));
-  Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (flowPacketSize));
-  //  Config::SetDefault ("ns3::TcpSocketBase::Sack", StringValue ("0"));
-  //  Config::SetDefault ("ns3::TcpSocketBase::Timestamp", StringValue ("0"));
-  Config::SetDefault ("ns3::TcpSocketBase::EcnMode", StringValue ("ClassicEcn"));
-
-  //=================  Flows configuration ================================
-
-                   //------ S E R V E R S --------//
-
-  // Set server's IP addresses
-  Ipv4Address serverAddresses[nb_servers];
-  for (uint32_t i = 0; i<nb_servers; ++i)
-  {
-    serverAddresses[i] = rightleafifs.GetAddress (i+1);
-  }
-
-
-/*
   // TCP connfection from node0 to node2
 
   uint16_t sinkPort = 8080;
@@ -437,19 +276,19 @@ int main (int argc, char *argv[])
   PacketSinkHelper packetSinkHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), sinkPort));
   ApplicationContainer sinkApps = packetSinkHelper.Install (c.Get (2)); //node2 as sink
   sinkApps.Start (Seconds (0.));
-  sinkApps.Stop (Seconds (100.));*/
+  sinkApps.Stop (Seconds (100.));
 
-  Ptr<Socket> ns3TcpSocket = Socket::CreateSocket (leftleaves.Get (0), TcpSocketFactory::GetTypeId ()); //source at node0
+  Ptr<Socket> ns3TcpSocket = Socket::CreateSocket (c.Get (0), TcpSocketFactory::GetTypeId ()); //source at node0
 
   // Trace Congestion window
   ns3TcpSocket->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwndChange));
 
   // Create TCP application at node0
-  /*Ptr<MyApp> app = CreateObject<MyApp> ();
+  Ptr<MyApp> app = CreateObject<MyApp> ();
   app->Setup (ns3TcpSocket, sinkAddress, 1040, 100000, DataRate ("250Kbps"));
   c.Get (0)->AddApplication (app);
   app->SetStartTime (Seconds (1.));
-  app->SetStopTime (Seconds (simDuration));*/
+  app->SetStopTime (Seconds (simDuration));
 
 
   // UDP connection from node1 to node3
@@ -481,12 +320,12 @@ int main (int argc, char *argv[])
       flowmon = flowmonHelper.InstallAll ();
     }
 
- /* if (tracing)
+  if (tracing)
     {
       AsciiTraceHelper ascii;
       p2p.EnableAsciiAll (ascii.CreateFileStream ("cc-dumbbell.tr"));
       p2p.EnablePcapAll ("cc-dumbbell", false);
-    }*/
+    }
 
 //
 // Now, do the actual simulation.
