@@ -198,8 +198,10 @@ IncRate (Ptr<MyApp> app, DataRate rate)
 
 int main (int argc, char *argv[])
 {
-  std::string lat = "2ms";
-  std::string rate = "500kb/s"; // P2P link
+  std::string lat = "25ms";
+  std::string send_lat = "10ms";
+  std::string recv_lat = "0ms";
+  std::string rate = "12000kb/s"; // P2P link
   bool enableFlowMonitor = false;
   bool tracing = true;
   float simDuration = 5.0;
@@ -207,6 +209,8 @@ int main (int argc, char *argv[])
 
   CommandLine cmd;
   cmd.AddValue ("latency", "P2P link Latency in miliseconds", lat);
+  cmd.AddValue ("senderLatency", "P2P link Latency in miliseconds", send_lat);
+  cmd.AddValue ("receiverLatency", "P2P link Latency in miliseconds", recv_lat);
   cmd.AddValue ("rate", "P2P data rate in bps", rate);
   cmd.AddValue ("EnableMonitor", "Enable Flow Monitor", enableFlowMonitor);
 
@@ -236,11 +240,20 @@ int main (int argc, char *argv[])
   PointToPointHelper p2p;
   p2p.SetDeviceAttribute ("DataRate", StringValue (rate));
   p2p.SetChannelAttribute ("Delay", StringValue (lat));
-  NetDeviceContainer d0d4 = p2p.Install (node0r0);
-  NetDeviceContainer d1d4 = p2p.Install (node1r0);
+
+  PointToPointHelper p2psend;
+  p2psend.SetDeviceAttribute ("DataRate", StringValue (rate));
+  p2psend.SetChannelAttribute ("Delay", StringValue (send_lat));
+
+  PointToPointHelper p2precv;
+  p2precv.SetDeviceAttribute ("DataRate", StringValue (rate));
+  p2precv.SetChannelAttribute ("Delay", StringValue (recv_lat));
+
+  NetDeviceContainer d0d4 = p2psend.Install (node0r0);
+  NetDeviceContainer d1d4 = p2psend.Install (node1r0);
   NetDeviceContainer d4d5 = p2p.Install (r0r1);
-  NetDeviceContainer d2d5 = p2p.Install (node2r1);
-  NetDeviceContainer d3d5 = p2p.Install (node3r1);
+  NetDeviceContainer d2d5 = p2precv.Install (node2r1);
+  NetDeviceContainer d3d5 = p2precv.Install (node3r1);
 
     // Later, we add IP addresses.
   NS_LOG_INFO ("Assign IP Addresses.");
@@ -269,14 +282,14 @@ int main (int argc, char *argv[])
 
   NS_LOG_INFO ("Create Applications.");
 
-  // TCP connfection from node0 to node2
+  // TCP connection from node0 to node2
 
   uint16_t sinkPort = 8080;
   Address sinkAddress (InetSocketAddress (i2i5.GetAddress (0), sinkPort)); // interface of node2
   PacketSinkHelper packetSinkHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), sinkPort));
   ApplicationContainer sinkApps = packetSinkHelper.Install (c.Get (2)); //node2 as sink
   sinkApps.Start (Seconds (0.));
-  sinkApps.Stop (Seconds (100.));
+  sinkApps.Stop (Seconds (simDuration));
 
   Ptr<Socket> ns3TcpSocket = Socket::CreateSocket (c.Get (0), TcpSocketFactory::GetTypeId ()); //source at node0
 
@@ -285,10 +298,28 @@ int main (int argc, char *argv[])
 
   // Create TCP application at node0
   Ptr<MyApp> app = CreateObject<MyApp> ();
-  app->Setup (ns3TcpSocket, sinkAddress, 1040, 100000, DataRate ("250Kbps"));
+  app->Setup (ns3TcpSocket, sinkAddress, 100, 1, DataRate (rate));
   c.Get (0)->AddApplication (app);
-  app->SetStartTime (Seconds (1.));
+  app->SetStartTime (Seconds (0.));
   app->SetStopTime (Seconds (simDuration));
+
+
+  // TCP connection from node1 to node3
+  uint16_t sinkPort2 = 6;
+  Address sinkAddress2 (InetSocketAddress (i3i5.GetAddress (0), sinkPort2)); // interface of node3
+  PacketSinkHelper packetSinkHelper2 ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), sinkPort2));
+  ApplicationContainer sinkApps2 = packetSinkHelper2.Install (c.Get (3)); //node3 as sink
+  sinkApps2.Start (Seconds (0.));
+  sinkApps2.Stop (Seconds (simDuration));
+
+  Ptr<Socket> ns3TcpSocket2 = Socket::CreateSocket (c.Get (1), TcpSocketFactory::GetTypeId ()); //source at node1
+
+  // Create 2nd TCP application at node1
+  Ptr<MyApp> app2 = CreateObject<MyApp> ();
+  app2->Setup (ns3TcpSocket2, sinkAddress2, 100, 1, DataRate (rate));
+  c.Get (1)->AddApplication (app2);
+  app2->SetStartTime (Seconds (0.));
+  app2->SetStopTime (Seconds (simDuration));
 
 
   // UDP connection from node1 to node3
@@ -324,7 +355,8 @@ int main (int argc, char *argv[])
     {
       AsciiTraceHelper ascii;
       p2p.EnableAsciiAll (ascii.CreateFileStream ("cc-dumbbell.tr"));
-      p2p.EnablePcapAll ("cc-dumbbell", false);
+      //p2p.EnablePcapAll ("cc-dumbbell", false);
+      p2psend.EnablePcapAll("cc-nodes",false);
     }
 
 //

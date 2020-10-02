@@ -236,10 +236,10 @@ int main (int argc, char *argv[])
 
   NodeContainer routers;
     routers.Create(2);
-  NodeContainer leftleaves;
-    leftleaves.Create(2 * nb_clients + 1);
-  NodeContainer rightleaves;
-    rightleaves.Create(2 * nb_servers + 1);
+  NodeContainer left_nodes;
+    left_nodes.Create(2 * nb_clients + 1);
+  NodeContainer right_nodes;
+    right_nodes.Create(2 * nb_servers + 1);
 
 
   /*NS_LOG_INFO ("Create nodes.");
@@ -302,8 +302,8 @@ int main (int argc, char *argv[])
 
     InternetStackHelper stack;
       stack.Install(routers);
-      stack.Install(leftleaves);
-      stack.Install(rightleaves);
+      stack.Install(left_nodes);
+      stack.Install(right_nodes);
 
   NS_LOG_INFO ("Enable static global routing.");
   //
@@ -316,24 +316,24 @@ int main (int argc, char *argv[])
   Config::SetDefault ("ns3::QueueBase::MaxSize", StringValue ("1000p"));
 
     NetDeviceContainer leftrouterdevices;
-    NetDeviceContainer leftleafdevices;
+    NetDeviceContainer left_nodedevices;
     NetDeviceContainer rightrouterdevices;
-    NetDeviceContainer rightleafdevices;
+    NetDeviceContainer right_nodedevices;
 
     // add the left side links
     for (uint32_t i = 0; i<(2 * nb_clients + 1); ++i) {
-        NetDeviceContainer cleft = inetLink.Install(routers.Get(0), leftleaves.Get(i));
+        NetDeviceContainer cleft = inetLink.Install(routers.Get(0), left_nodes.Get(i));
           leftrouterdevices.Add(cleft.Get(0));
-          leftleafdevices.Add(cleft.Get(1));
+          left_nodedevices.Add(cleft.Get(1));
     }
 
   //========================== Datacenter Links ==========================
 
     // add the right side links
     for (uint32_t i = 0; i<(nb_servers + 1); ++i) {
-        NetDeviceContainer cright = dcLink.Install(routers.Get(2), rightleaves.Get(i));
+        NetDeviceContainer cright = dcLink.Install(routers.Get(2), right_nodes.Get(i));
           rightrouterdevices.Add(cright.Get(0));
-          rightleafdevices.Add(cright.Get(1));
+          right_nodedevices.Add(cright.Get(1));
     }
 
   //========================== Bottleneck Link =============================
@@ -376,9 +376,9 @@ int main (int argc, char *argv[])
 
   Ipv4InterfaceContainer routerifs_right;
   Ipv4InterfaceContainer routerifs_left;
-  Ipv4InterfaceContainer leftleafifs;
+  Ipv4InterfaceContainer left_nodeifs;
   Ipv4InterfaceContainer leftrouterifs;
-  Ipv4InterfaceContainer rightleafifs;
+  Ipv4InterfaceContainer right_nodeifs;
   Ipv4InterfaceContainer rightrouterifs;
 
   // assign addresses to connection connecting routers
@@ -390,10 +390,10 @@ int main (int argc, char *argv[])
   {
       // Assign to left side
       NetDeviceContainer ndcleft;
-        ndcleft.Add(leftleafdevices.Get(i));
+        ndcleft.Add(left_nodedevices.Get(i));
         ndcleft.Add(leftrouterdevices.Get(i));
       Ipv4InterfaceContainer ifcleft = leftips.Assign(ndcleft);
-        leftleafifs.Add(ifcleft.Get(0));
+        left_nodeifs.Add(ifcleft.Get(0));
         leftrouterifs.Add(ifcleft.Get(1));
       leftips.NewNetwork();
    }
@@ -401,10 +401,10 @@ int main (int argc, char *argv[])
   {
       // Assign to right side
       NetDeviceContainer ndcright;
-        ndcright.Add(rightleafdevices.Get(i));
+        ndcright.Add(right_nodedevices.Get(i));
         ndcright.Add(rightrouterdevices.Get(i));
       Ipv4InterfaceContainer ifcright = rightips.Assign(ndcright);
-        rightleafifs.Add(ifcright.Get(0));
+        right_nodeifs.Add(ifcright.Get(0));
         rightrouterifs.Add(ifcright.Get(1));
       rightips.NewNetwork();
   }
@@ -425,7 +425,7 @@ int main (int argc, char *argv[])
   Ipv4Address serverAddresses[nb_servers];
   for (uint32_t i = 0; i<nb_servers; ++i)
   {
-    serverAddresses[i] = rightleafifs.GetAddress (i+1);
+    serverAddresses[i] = right_nodeifs.GetAddress (i+1);
   }
 
 
@@ -439,7 +439,7 @@ int main (int argc, char *argv[])
   sinkApps.Start (Seconds (0.));
   sinkApps.Stop (Seconds (100.));*/
 
-  Ptr<Socket> ns3TcpSocket = Socket::CreateSocket (leftleaves.Get (0), TcpSocketFactory::GetTypeId ()); //source at node0
+  Ptr<Socket> ns3TcpSocket = Socket::CreateSocket (left_nodes.Get (0), TcpSocketFactory::GetTypeId ()); //source at node0
 
   // Trace Congestion window
   ns3TcpSocket->TraceConnectWithoutContext ("CongestionWindow", MakeCallback (&CwndChange));
