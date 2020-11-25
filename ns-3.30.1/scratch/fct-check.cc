@@ -51,7 +51,7 @@ main (int argc, char *argv[])
   bool tracing = true;
   uint32_t PacketSize = 1404;
   uint32_t TCPFlows = 1;
-  float simDuration = 20.0;
+  float simDuration = 5.0;
 
 
   CommandLine cmd;

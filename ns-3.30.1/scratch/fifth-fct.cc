@@ -166,7 +166,7 @@ MyApp::ScheduleTx (void)
 }
 
 bool newCwndFile = true;
-std::string file_name = "5.newreno-data";
+std::string file_name = "100.newreno-data";
 
 static void
 CwndChange (uint32_t oldCwnd, uint32_t newCwnd)
@@ -204,17 +204,24 @@ main (int argc, char *argv[])
   bool sack = true;
   uint32_t PacketSize = 1440;
   uint32_t numPkts = 2;
+  uint32_t queueSize = 20; 
   uint32_t initcwnd = 10;
   float simDuration = 12.0;
 
   CommandLine cmd;
   cmd.AddValue ("numPkts", "Number of packets to transmit", numPkts);
+  cmd.AddValue ("queueSize", "Queue size in packets", queueSize);
+  cmd.AddValue ("delay", "One-way delay in ms", delay);
+  cmd.AddValue ("rate", "Link bandwidth in Mbps", rate);
   cmd.Parse (argc, argv);
 
   Config::SetDefault ("ns3::TcpL4Protocol::SocketType", TypeIdValue (TypeId::LookupByName ("ns3::TcpNewReno")));
   Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (PacketSize));
   Config::SetDefault ("ns3::TcpSocketBase::Sack", BooleanValue (sack));
-  
+  //Config::SetDefault("ns3::DropTailQueue::MaxPackets", UintegerValue(queueSize));
+  Config::SetDefault ("ns3::QueueBase::MaxSize", QueueSizeValue (QueueSize (QueueSizeUnit::PACKETS, queueSize)));
+  //Config::SetDefault ("ns3::TcpSocket::TcpNoDelay", BooleanValue (false));
+
   NodeContainer nodes;
   nodes.Create (2);
 
