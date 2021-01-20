@@ -1,0 +1,49 @@
+#!/bin/bash
+
+#sed -i "/std::string file_name = /{s/.*/std::string file_name = \"newreno-data\";/}" scratch/tcp-large-transfer.cc
+sed -i 's/TcpNewReno/TcpCubic/' scratch/tcp-large-transfer.cc
+
+toexec=scratch/tcp-large-transfer
+
+#for cwnd in 1 2 4
+for cwnd in 1 2 4 10
+do
+    #for d in "2ms" "4ms" "5ms" "10ms" "50ms" "100ms" "200ms"
+    for d in "10ms" "50ms" "100ms" "200ms"
+	do
+	    for b in "12Mbps"
+	    do
+		for que in 40 
+		do
+		    for run in 1
+		    do
+		        outdir="outCubic-$cwnd-$d-$b-${que}_run${run}"
+		        echo "$outdir"
+		        if [[ ! -f $outdir ]]
+		        then
+		            mkdir $outdir
+		        fi
+		        for pkts in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 40 60 80 100
+		        #for pkts in 1 2 
+		        do
+		            echo "Number of packets: " $pkts
+			    bytes=$( expr 1440 '*' "$pkts")
+		            sed -i "/static const uint32_t totalTxBytes =/{s/.*/static const uint32_t totalTxBytes = $bytes;/}" scratch/tcp-large-transfer.cc
+			    sed -i "/std::string file_name = /{s/.*/std::string file_name = \""${pkts}".cubic-data\";/}" scratch/tcp-large-transfer.cc
+			    sed -i "/uint32_t initcwnd =/{s/.*/uint32_t initcwnd =$cwnd;/}" scratch/tcp-large-transfer.cc
+
+		            ./waf --run "$toexec --numPkts=$pkts --queueSize=$que --delay=$d --rate=$b" &> $outdir/$pkts.out &
+		            #echo "done waf"
+		            wait
+		            mv *cubic-data* $outdir
+		        done
+		    done
+		done
+	    done
+	done
+done
+sleep 1
+
+pkill -9 -x tcp-large-transfer
+
+

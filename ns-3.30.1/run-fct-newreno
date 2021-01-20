@@ -1,9 +1,9 @@
 #!/bin/bash
 
-sed -i "/std::string file_name = /{s/.*/std::string file_name = \"newreno-data\";/}" scratch/fifth-fct.cc
-sed -i 's/ns3::TcpCubic/ns3::TcpNewReno/' scratch/fifth-fct.cc
+#sed -i "/std::string file_name = /{s/.*/std::string file_name = \"newreno-data\";/}" scratch/fct-check.cc
+#sed -i 's/ns3::TcpCubic/ns3::TcpNewReno/' scratch/fifth-fct.cc
 
-toexec=scratch/fifth-fct
+toexec=scratch/fct-check
 
 for d in "10ms" "50ms" "100ms" "200ms"
 do
@@ -11,7 +11,7 @@ do
     do
         for que in 20 40 80 160 320
         do
-            for run in {1..10}
+            for run in 1
             do
                 outdir="outNewReno-$d-$b-${que}_run${run}"
                 echo "$outdir"
@@ -23,7 +23,7 @@ do
                 #for pkts in 1 2 
                 do
                     echo "Number of packets: " $pkts
-                    sed -i "/std::string file_name = /{s/.*/std::string file_name = \""${pkts}".newreno-data\";/}" scratch/fifth-fct.cc
+                    sed -i "/std::string file_name = /{s/.*/std::string file_name = \""${pkts}".newreno-data\";/}" scratch/fct-check.cc
 
                     ./waf --run "$toexec --numPkts=$pkts --queueSize=$que --delay=$d --rate=$b" &> $outdir/$pkts.out &
                     #echo "done waf"
@@ -36,7 +36,7 @@ do
 done
 sleep 1
 
-pkill -9 -x fifth-fct
+pkill -9 -x fct-check
 
 #for f in outNewRenox*/newreno-data-fct-0-0.pcap;
 #    do 
