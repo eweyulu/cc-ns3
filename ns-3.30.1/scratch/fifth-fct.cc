@@ -207,9 +207,9 @@ main (int argc, char *argv[])
   bool tracing = true;
   //bool sack = true;
   uint32_t PacketSize = 1440;
-  uint32_t numPkts = 5;
+  uint32_t numPkts = 10;
   uint32_t queueSize = 20; 
-uint32_t initcwnd =1;
+uint32_t initcwnd =10;
   float simDuration = 15.0;
 
   CommandLine cmd;

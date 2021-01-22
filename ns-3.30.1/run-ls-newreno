@@ -6,7 +6,7 @@ sed -i 's/TcpCubic/TcpNewReno/' scratch/long-short3.cc
 toexec=scratch/long-short3
 
 #for cwnd in 1 2 4 10
-for cwnd in 1 10
+for cwnd in 10
 do
     for d in "10ms" "50ms" "100ms" "200ms"
     #for d in "2ms" "4ms" "5ms"

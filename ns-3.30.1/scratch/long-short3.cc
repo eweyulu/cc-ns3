@@ -29,7 +29,7 @@ using namespace std;
 
 using namespace ns3;
 
-NS_LOG_COMPONENT_DEFINE ("FifthScriptExample");
+NS_LOG_COMPONENT_DEFINE ("LongFlowShortFlow");
 
 // ===========================================================================
 //
@@ -171,7 +171,7 @@ MyApp::ScheduleTx (void)
 }
 
 bool newCwndFile = true;
-std::string file_name = "600.newreno-data";
+std::string file_name = "8000.newreno-data";
 
 static void
 CwndChange (uint32_t oldCwnd, uint32_t newCwnd)
@@ -203,17 +203,17 @@ int
 main (int argc, char *argv[])
 {
 
-  std::string delay = "100ms";
-  std::string rate = "1Mbps";
-  std::string access_bandwidth = "100Mbps";
-  std::string access_delay = "4ms";
+  std::string delay = "10ms";
+  std::string rate = "12Mbps";
+  //std::string access_bandwidth = "100Mbps";
+  //std::string access_delay = "4ms";
   bool tracing = true;
   //bool sack = true;
   uint32_t PacketSize = 1440;
-  uint32_t numPkts = 1000;
+  uint32_t numPkts = 10;
   std::string queueSize = "20p";
-uint32_t initcwnd =1;
-  float simDuration = 5.0;
+uint32_t initcwnd =10;
+  float simDuration = 12.0;
 
   CommandLine cmd;
   cmd.AddValue ("numPkts", "Number of packets to transmit", numPkts);
@@ -226,8 +226,8 @@ uint32_t initcwnd =1;
   Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (PacketSize));
   Config::SetDefault ("ns3::TcpSocket::InitialCwnd", UintegerValue (initcwnd));
   //Config::SetDefault ("ns3::TcpSocketBase::Sack", BooleanValue (sack));
-  //Config::SetDefault ("ns3::QueueBase::MaxSize", StringValue ("1000p"));
- //Config::SetDefault ("ns3::QueueBase::MaxSize", QueueSizeValue (QueueSize (QueueSizeUnit::PACKETS, queueSize)));
+  //Config::SetDefault("ns3::DropTailQueue::MaxPackets", UintegerValue(queueSize));
+  //Config::SetDefault ("ns3::QueueBase::MaxSize", StringValue (queueSize));
   //Config::SetDefault ("ns3::TcpSocket::TcpNoDelay", BooleanValue (false));
 
   //Create 2 senders and attach to router0
@@ -254,23 +254,23 @@ uint32_t initcwnd =1;
 
   // Create channel between n0 and r0
   PointToPointHelper p2p_n0r0;
-  p2p_n0r0.SetDeviceAttribute ("DataRate", StringValue (access_bandwidth));
-  p2p_n0r0.SetChannelAttribute ("Delay", StringValue (access_delay));
+  p2p_n0r0.SetDeviceAttribute ("DataRate", StringValue (rate));
+  p2p_n0r0.SetChannelAttribute ("Delay", StringValue ("2ms"));
 
   // Create channel between n1 and r0
   PointToPointHelper p2p_n1r0;
-  p2p_n1r0.SetDeviceAttribute ("DataRate", StringValue (access_bandwidth));
-  p2p_n1r0.SetChannelAttribute ("Delay", StringValue (access_delay));
+  p2p_n1r0.SetDeviceAttribute ("DataRate", StringValue (rate));
+  p2p_n1r0.SetChannelAttribute ("Delay", StringValue ("1ms"));
 
   // Create channel between n2 and r1
   PointToPointHelper p2p_n2r1;
-  p2p_n2r1.SetDeviceAttribute ("DataRate", StringValue (access_bandwidth));
-  p2p_n2r1.SetChannelAttribute ("Delay", StringValue (access_delay));
+  p2p_n2r1.SetDeviceAttribute ("DataRate", StringValue (rate));
+  p2p_n2r1.SetChannelAttribute ("Delay", StringValue ("1ms"));
 
   // Create channel between n3 and r1
   PointToPointHelper p2p_n3r1;
-  p2p_n3r1.SetDeviceAttribute ("DataRate", StringValue (access_bandwidth));
-  p2p_n3r1.SetChannelAttribute ("Delay", StringValue (access_delay));
+  p2p_n3r1.SetDeviceAttribute ("DataRate", StringValue (rate));
+  p2p_n3r1.SetChannelAttribute ("Delay", StringValue ("2ms"));
 
   // Create channel between r0 and r1
   PointToPointHelper p2p_r0r1;
@@ -345,7 +345,7 @@ uint32_t initcwnd =1;
   Address sinkAddress (InetSocketAddress (ipAddr_n3r1.GetAddress (1), sinkPort));
   PacketSinkHelper packetSinkHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), sinkPort));
   ApplicationContainer sinkApps = packetSinkHelper.Install (n3r1.Get (1));
-  sinkApps.Start (Seconds (0.1));
+  sinkApps.Start (Seconds (0.));
   sinkApps.Stop (Seconds (simDuration));
 
   Ptr<Socket> ns3TcpSocket = Socket::CreateSocket (n1r0.Get (1), TcpSocketFactory::GetTypeId ());
@@ -383,15 +383,15 @@ uint32_t initcwnd =1;
       p2p_r0r1.EnablePcapAll (file_name, false);
     }
 
-  //devices.Get (1)->TraceConnectWithoutContext ("PhyRxDrop", MakeCallback (&RxDrop));
+  //dev_r0r1.Get (1)->TraceConnectWithoutContext ("PhyRxDrop", MakeCallback (&RxDrop));
 
-  AnimationInterface anim(file_name +"-anim.xml");
+  /*AnimationInterface anim(file_name +"-anim.xml");
   anim.SetConstantPosition(n0r0.Get(0),1.0,5.0); //node 0
   anim.SetConstantPosition(n1r0.Get(1),1.0,1.0); //node 2
   anim.SetConstantPosition(n1r0.Get(0),5.0,3.0); //node 1
   anim.SetConstantPosition(n2r1.Get(1),10.0,3.0); //node 4
   anim.SetConstantPosition(n2r1.Get(0),15.0,5.0); //node 3
-  anim.SetConstantPosition(n3r1.Get(1),15.0,1.0); //node 5
+  anim.SetConstantPosition(n3r1.Get(1),15.0,1.0); //node 5*/
 
   Simulator::Stop (Seconds (simDuration));
   Simulator::Run ();
