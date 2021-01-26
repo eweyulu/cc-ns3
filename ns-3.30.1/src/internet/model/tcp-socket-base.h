@@ -21,12 +21,40 @@
 #ifndef TCP_SOCKET_BASE_H
 #define TCP_SOCKET_BASE_H
 
+///////////////////////////////////////////////////////////////////
+// ADDITIONS FOR PACING: START
+
+// Configuration options (to support BBR' and any paced protocols):
+// TCP_PACING - Packet pacing is done in TCP (in socket-base.cc).
+// APP_PACING - Packet pacing is NOT done in TCP, only in the application.
+// NO_PACING - No packet pacing is done (BBR' adjusts accordingly).
+enum enum_pacing_config {TCP_PACING, APP_PACING, NO_PACING};
+
+// Actual configuration option.
+const enum_pacing_config PACING_CONFIG = TCP_PACING;
+//const enum_pacing_config PACING_CONFIG = NO_PACING;
+//const enum_pacing_config PACING_CONFIG = APP_PACING;
+
+const float PACING_VERSION = 1.1;  // See changelog.txt.
+
+// ADDITIONS FOR PACING: END
+///////////////////////////////////////////////////////////////////
+
 #include <stdint.h>
 #include <queue>
+#include "ns3/callback.h"
 #include "ns3/traced-value.h"
 #include "ns3/tcp-socket.h"
+#include "ns3/ptr.h"
+#include "ns3/ipv4-address.h"
 #include "ns3/ipv4-header.h"
+#include "ns3/ipv4-interface.h"
 #include "ns3/ipv6-header.h"
+#include "ns3/ipv6-interface.h"
+#include "ns3/event-id.h"
+#include "tcp-tx-buffer.h"
+#include "tcp-rx-buffer.h"
+#include "rtt-estimator.h"
 #include "ns3/timer.h"
 #include "ns3/sequence-number.h"
 #include "ns3/data-rate.h"
@@ -76,6 +104,7 @@ public:
   Time            time;   //!< Time this one was sent
   bool            retx;   //!< True if this has been retransmitted
 };
+
 
 /**
  * \ingroup socket
@@ -743,6 +772,9 @@ protected:
    */
   virtual uint32_t SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool withAck);
 
+  /*uint32_t SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool withAck);
+  uint32_t SendDataPacketReal (SequenceNumber32 seq, uint32_t maxSize, bool withAck);*/ //Emilia
+
   /**
    * \brief Send a empty packet that carries a flag, e.g., ACK
    *
@@ -900,6 +932,7 @@ protected:
    */
   virtual uint32_t UnAckDataCount (void) const;
 
+public: // Change status for BBR' support.
   /**
    * \brief Return total bytes in flight
    *
@@ -909,6 +942,7 @@ protected:
    */
   virtual uint32_t BytesInFlight (void) const;
 
+protected:
   /**
    * \brief Return the max possible number of unacked bytes
    * \returns the max possible number of unacked bytes
@@ -1156,7 +1190,6 @@ protected:
    * \return 0 if b>0, (a-b) otherwise
    */
   static uint32_t SafeSubtraction (uint32_t a, uint32_t b);
-
   /**
    * \brief Notify Pacing
    */
@@ -1167,7 +1200,21 @@ protected:
    * \param p Packet
    */
   void AddSocketTags (const Ptr<Packet> &p) const;
+  //////////////////////////////
+  // ADDITIONS FOR PACING: START
+public:  
+  void SetPacingRate (double pacing_rate);
+  double GetPacingRate () const;
+  virtual int pacingQueueBytes (void) const;
 
+protected:
+  EventId           m_pacing_event;                // Pacing event.
+  std::queue<tcp_pacing_struct> m_pacing_packets;  // Pacing packets.
+private:
+  void PacePackets();
+  // ADDITIONS FOR PACING: END
+  //////////////////////////////
+  
 protected:
   // Counters and events
   EventId           m_retxEvent     {}; //!< Retransmission event
@@ -1197,6 +1244,7 @@ protected:
   Time              m_delAckTimeout    {Seconds (0.0)};   //!< Time to delay an ACK
   Time              m_persistTimeout   {Seconds (0.0)};   //!< Time between sending 1-byte probes
   Time              m_cnTimeout        {Seconds (0.0)};   //!< Timeout for connection retry
+  //TracedValue<Time> m_lastRtt;         //!< Last RTT sample collected --> Emilia
 
   // History of RTT
   std::deque<RttHistory>      m_history;         //!< List of sent packet

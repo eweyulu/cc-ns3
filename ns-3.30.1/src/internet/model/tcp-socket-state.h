@@ -173,7 +173,26 @@ public:
   {
     return m_ssThresh / m_segmentSize;
   }
+
+  //////////////////////////////
+  // ADDITIONS FOR PACING: START
+
+  void SetPacingRate (double pacing_rate);
+  double GetPacingRate () const;
+protected:
+  double            m_pacing_rate;                 // Pacing rate (in Mb/s).
+
 };
+
+// Structure for tracking packets to send for pacing in TCP.
+struct tcp_pacing_struct {
+  SequenceNumber32 seq;    // Seq location in TCP buffer.
+  uint32_t maxSize;        // Bytes to extract.
+  bool withAck;            // Include ack or not.
+};
+  
+// ADDITIONS FOR PACING: END
+//////////////////////////////
 
 namespace TracedValueCallback {
 

@@ -20,6 +20,7 @@
 #define TCPCONGESTIONOPS_H
 
 #include "ns3/tcp-socket-state.h"
+#include "ns3/tcp-socket-base.h"
 
 namespace ns3 {
 
@@ -121,6 +122,14 @@ public:
     NS_UNUSED (tcb);
     NS_UNUSED (segmentsAcked);
     NS_UNUSED (rtt);
+
+  }
+
+  // Enable congestion control-specific Send() functionality
+  // (invoked in TcpSocketBase::SendDataPacketReal()).
+  virtual void Send(Ptr<TcpSocketBase> tsb, Ptr<TcpSocketState> tcb,
+                    SequenceNumber32 seq, bool isRetrans)
+  {
   }
 
   /**

@@ -56,6 +56,7 @@
 #include "tcp-option-ts.h"
 #include "tcp-option-sack-permitted.h"
 #include "tcp-option-sack.h"
+#include "rtt-estimator.h"
 #include "tcp-congestion-ops.h"
 #include "tcp-recovery-ops.h"
 
@@ -240,6 +241,12 @@ TcpSocketBase::TcpSocketBase (void)
   : TcpSocket ()
 {
   NS_LOG_FUNCTION (this);
+
+  if (PACING_CONFIG == TCP_PACING) 
+    NS_LOG_INFO ("PACING_IN_TCP - Pacing in TCP is enabled.");
+  else
+    NS_LOG_INFO ("APP_PACING/NO_PACING - Pacing in TCP is *not* enabled.");
+
   m_rxBuffer = CreateObject<TcpRxBuffer> ();
   m_txBuffer = CreateObject<TcpTxBuffer> ();
   m_tcb      = CreateObject<TcpSocketState> ();
@@ -288,6 +295,8 @@ TcpSocketBase::TcpSocketBase (void)
 
 TcpSocketBase::TcpSocketBase (const TcpSocketBase& sock)
   : TcpSocket (sock),
+    m_pacing_event (sock.m_pacing_event),     // For pacing
+    m_pacing_packets (sock.m_pacing_packets), // For pacing
     //copy object::m_tid and socket::callbacks
     m_dupAckCount (sock.m_dupAckCount),
     m_delAckCount (0),
@@ -300,6 +309,7 @@ TcpSocketBase::TcpSocketBase (const TcpSocketBase& sock)
     m_rto (sock.m_rto),
     m_minRto (sock.m_minRto),
     m_clockGranularity (sock.m_clockGranularity),
+    //m_lastRtt (sock.m_lastRtt), --> Emilia
     m_delAckTimeout (sock.m_delAckTimeout),
     m_persistTimeout (sock.m_persistTimeout),
     m_cnTimeout (sock.m_cnTimeout),
@@ -2844,6 +2854,12 @@ TcpSocketBase::SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool with
       isRetransmission = true;
     }
 
+  ////////////////////////////////////////////////////////
+  // Hook for congestion control-specific Send() method.
+  // (Added for BBR' support.)
+  m_congestionControl->Send(this, m_tcb, seq, isRetransmission); 
+  ////////////////////////////////////////////////////////
+
   Ptr<Packet> p = m_txBuffer->CopyFromSequence (maxSize, seq);
   uint32_t sz = p->GetSize (); // Size of packet
   uint8_t flags = withAck ? TcpHeader::ACK : 0;
@@ -3171,6 +3187,17 @@ TcpSocketBase::BytesInFlight () const
   m_tcb->m_bytesInFlight = bytesInFlight;
 
   NS_LOG_DEBUG ("Returning calculated bytesInFlight: " << bytesInFlight);
+
+  // Compute adjusted queue: inflight - pacing queue
+  auto pacing_bytes = pacingQueueBytes();
+  int adj_bytes = bytesInFlight - pacing_bytes;
+
+  NS_LOG_INFO(this <<
+              " DATA Pacing queue pkts: " << m_pacing_packets.size() << 
+              "  bytes: " << pacing_bytes << 
+              "  inflight: " << bytesInFlight << 
+              "  inflight adjusted: " << adj_bytes);
+
   return bytesInFlight;
 }
 
@@ -4256,5 +4283,45 @@ RttHistory::RttHistory (const RttHistory& h)
     retx (h.retx)
 {
 }
+
+///////////////////////////////////////////////////////////////////
+// ADDITIONS FOR PACING: START
+
+// Get pacing rate.
+double TcpSocketState::GetPacingRate() const {
+  return m_pacing_rate;
+}    
+
+// Set pacing rate.
+void TcpSocketState::SetPacingRate(double pacing_rate) {
+  m_pacing_rate = pacing_rate;
+}
+
+// Get pacing rate (in tcp socket state).
+double TcpSocketBase::GetPacingRate() const {
+  NS_LOG_FUNCTION (this);
+  return m_tcb -> GetPacingRate();
+}    
+
+// Set pacing rate (in tcp socket state).
+void TcpSocketBase::SetPacingRate (double pacing_rate) {
+  NS_LOG_FUNCTION (this << pacing_rate);
+  m_tcb -> SetPacingRate(pacing_rate);
+}
+ 
+// Compute total bytes in pacing packet queue.
+int TcpSocketBase::pacingQueueBytes (void) const {
+  int pacing_bytes = 0;
+  std::queue<tcp_pacing_struct> temp_q = m_pacing_packets;
+  while (!temp_q.empty()) {
+    tcp_pacing_struct packet = m_pacing_packets.front();
+    pacing_bytes += packet.maxSize;
+    temp_q.pop();
+  }
+  return pacing_bytes;
+}
+
+// ADDITIONS FOR PACING: END
+///////////////////////////////////////////////////////////////////
 
 } // namespace ns3
