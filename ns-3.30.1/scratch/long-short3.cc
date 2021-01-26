@@ -171,7 +171,7 @@ MyApp::ScheduleTx (void)
 }
 
 bool newCwndFile = true;
-std::string file_name = "8000.newreno-data";
+std::string file_name = "5.newreno-data";
 
 static void
 CwndChange (uint32_t oldCwnd, uint32_t newCwnd)
@@ -213,7 +213,7 @@ main (int argc, char *argv[])
   uint32_t numPkts = 10;
   std::string queueSize = "20p";
 uint32_t initcwnd =10;
-  float simDuration = 12.0;
+  float simDuration = 5.0;
 
   CommandLine cmd;
   cmd.AddValue ("numPkts", "Number of packets to transmit", numPkts);
@@ -319,7 +319,7 @@ uint32_t initcwnd =10;
 
   NS_LOG_INFO ("Create Applications.");
 
-  //Create app for long flow at node 0(logical node ID) (logical node ID)
+  /*Create app for long flow at node 0(logical node ID) (logical node ID)
   uint16_t port = 8000;
   BulkSendHelper source("ns3::TcpSocketFactory",
                         InetSocketAddress(ipAddr_n2r1.GetAddress(0), port));
@@ -336,7 +336,7 @@ uint32_t initcwnd =10;
                         InetSocketAddress(Ipv4Address::GetAny(), port));
   apps = sink.Install(n2r1.Get(0));
   apps.Start(Seconds(0.1));
-  apps.Stop(Seconds(simDuration));
+  apps.Stop(Seconds(simDuration));*/
 
   //================================================================================//
 

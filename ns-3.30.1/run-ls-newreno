@@ -5,6 +5,9 @@ sed -i 's/TcpCubic/TcpNewReno/' scratch/long-short3.cc
 
 toexec=scratch/long-short3
 
+DATADIR=data-LS-$(date "+%Y-%m-%d_%H-%M-%S")
+sudo mkdir "/local/NS-3/"$DATADIR""
+
 #for cwnd in 1 2 4 10
 for cwnd in 10
 do
@@ -38,6 +41,8 @@ do
                         wait
                         mv *newreno-data* $outdir
                     done
+		   #echo $DATADIR
+		   sudo mv $outdir/ /local/NS-3/$DATADIR
                 done
             done
         done
